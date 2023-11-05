@@ -1,11 +1,14 @@
-use std::thread;
+use libc::iopl;
+use memmap::{MmapMut, MmapOptions};
+use rouille::Response;
 use std::arch::asm;
 use std::fs::{self, OpenOptions};
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc, Mutex,
+};
+use std::thread;
 use std::time::Duration;
-use std::sync::{Arc, Mutex, atomic::{AtomicBool, Ordering}};
-use rouille::Response;
-use memmap::{MmapMut, MmapOptions};
-use libc::iopl;
 
 fn outb(port: u16, data: u8) {
     unsafe { asm!("out dx, al", in("dx") port, in("al") data, options(nostack)) }
@@ -119,7 +122,14 @@ impl LedCtl for AirLedCtl {
     fn probe() -> bool {
         let vendor = fs::read_to_string("/sys/class/dmi/id/board_vendor").unwrap_or("asdf".into());
         let name = fs::read_to_string("/sys/class/dmi/id/board_name").unwrap_or("asdf".into());
-        let supported_devices = ["AIR", "AIR Pro", "AIR 1S", "AIR 1S Limited", "AYANEO 2", "GEEK"];
+        let supported_devices = [
+            "AIR",
+            "AIR Pro",
+            "AIR 1S",
+            "AIR 1S Limited",
+            "AYANEO 2",
+            "GEEK",
+        ];
         let is_supported = vendor.trim() == "AYANEO" && supported_devices.contains(&name.trim());
 
         is_supported
@@ -144,11 +154,17 @@ impl LedCtl for AirLedCtl {
 }
 
 trait LedCtl {
-    fn init() -> Self where Self: Sized;
-    fn probe() -> bool where Self: Sized;
+    fn init() -> Self
+    where
+        Self: Sized;
+    fn probe() -> bool
+    where
+        Self: Sized;
     fn reinit(&mut self);
     fn set_rgb(&mut self, _rgb: (u8, u8, u8)) {}
-    fn supports_rgb(&self) -> bool { false }
+    fn supports_rgb(&self) -> bool {
+        false
+    }
 }
 
 fn get_led_controller() -> Box<dyn LedCtl> {
@@ -227,14 +243,22 @@ fn suspend_watcher() {
 }
 
 fn get_brightness_normalized() -> Option<f32> {
-    let backlight_dir = fs::read_dir("/sys/class/backlight").ok()?
+    let backlight_dir = fs::read_dir("/sys/class/backlight")
+        .ok()?
         .flatten()
         .map(|entry| entry.path())
         .next()?;
 
-    let brightness_file = { let mut tmp = backlight_dir.clone(); tmp.push("brightness"); tmp };
-    let max_brightness_file = { let mut tmp = backlight_dir.clone(); tmp.push("max_brightness"); tmp };
-
+    let brightness_file = {
+        let mut tmp = backlight_dir.clone();
+        tmp.push("brightness");
+        tmp
+    };
+    let max_brightness_file = {
+        let mut tmp = backlight_dir.clone();
+        tmp.push("max_brightness");
+        tmp
+    };
 
     let brightness = fs::read_to_string(&brightness_file)
         .expect("Failed to read backlight brightness")
@@ -263,7 +287,8 @@ fn main() {
     }
 
     // find battery
-    let battery_dir = fs::read_dir("/sys/class/power_supply").expect("Failed to open /sys/class/power_supply")
+    let battery_dir = fs::read_dir("/sys/class/power_supply")
+        .expect("Failed to open /sys/class/power_supply")
         .flatten()
         .find(|ps| {
             let mut path = ps.path();
@@ -273,8 +298,16 @@ fn main() {
         .map(|dir| dir.path())
         .expect("Failed to find battery");
 
-    let battery_cap_path = { let mut tmp = battery_dir.clone(); tmp.push("capacity"); tmp };
-    let battery_status_path = { let mut tmp = battery_dir.clone(); tmp.push("status"); tmp };
+    let battery_cap_path = {
+        let mut tmp = battery_dir.clone();
+        tmp.push("capacity");
+        tmp
+    };
+    let battery_status_path = {
+        let mut tmp = battery_dir.clone();
+        tmp.push("status");
+        tmp
+    };
 
     let theme_mutex = Arc::new(Mutex::new(Theme::default()));
     let theme_mutex_2 = Arc::clone(&theme_mutex);
@@ -284,15 +317,22 @@ fn main() {
     println!("Found battery at {:?}", &battery_dir);
     let mut old = (0, 0, 0);
     loop {
-        let capacity = fs::read_to_string(&battery_cap_path).expect("Failed to read battery capacity").trim().parse::<u8>().unwrap_or(0);
-        let status = fs::read_to_string(&battery_status_path).expect("Failed to read battery status");
+        let capacity = fs::read_to_string(&battery_cap_path)
+            .expect("Failed to read battery capacity")
+            .trim()
+            .parse::<u8>()
+            .unwrap_or(0);
+        let status =
+            fs::read_to_string(&battery_status_path).expect("Failed to read battery status");
         let theme = theme_mutex.lock().unwrap();
         let color = match status.trim() {
-            "Charging" => if capacity < 90 {
-                theme.charging
-            } else {
-                theme.full
-            },
+            "Charging" => {
+                if capacity < 90 {
+                    theme.charging
+                } else {
+                    theme.full
+                }
+            }
             _ => match capacity {
                 0..=20 => theme.low_bat,
                 90..=100 => theme.full,
@@ -302,7 +342,11 @@ fn main() {
         drop(theme);
 
         let scale = get_brightness_normalized().unwrap_or(1.0);
-        let tmp = (color.0 as f32 * scale, color.1 as f32 * scale, color.2 as f32 * scale);
+        let tmp = (
+            color.0 as f32 * scale,
+            color.1 as f32 * scale,
+            color.2 as f32 * scale,
+        );
         let adjusted_color = (tmp.0 as u8, tmp.1 as u8, tmp.2 as u8);
         let slept = JUST_RESUMED.swap(false, Ordering::SeqCst);
 
