@@ -1,11 +1,7 @@
-# fuck this, not gonna maintain it anymore. old readme below
-
-
-
-
-
-
 # Ayaled - A small and cute tool to control leds on Aya Neo Devices
+
+This is a fork of the original project made with the intention to add support
+for newer devices.
 
 ## API:
 Everything is controlled via HTTP requests.
