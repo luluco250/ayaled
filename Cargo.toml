@@ -4,7 +4,7 @@ authors = [
 	"Maya Matuszczyk maccraft123mc at gmail dot com>",
 	"Lucas Melo <luluco250 at gmail dot com>"
 ]
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
