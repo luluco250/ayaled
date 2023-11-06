@@ -1,10 +1,13 @@
-# Maintainer: Maya Matuszczyk <maccraft123mc@gmail.com>
-pkgname=ayaled
-pkgver=0.5.1
+# Maintainer: Lucas Melo <luluco250 at gmail dot com>
+
+pkgname=ayaled-updated
+pkgver=0.6.0
 pkgrel=1
-pkgdesc="A daemon to manage joystick LEDs on AYANEO devices"
+pkgdesc="A daemon to manage joystick LEDs on AYANEO devices, updated fork."
 arch=('x86_64')
 makedepends=('cargo')
+provides=('ayaled')
+conflicts=('ayaled' 'ayaled2')
 
 prepare() {
   cargo fetch --locked --target "$CARCH-unknown-linux-gnu"
