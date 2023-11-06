@@ -1,7 +1,7 @@
 [package]
 name = "ayaled-updated"
 authors = [
-	"Maya Matuszczyk <maccraft123mc@gmail.com>",
+	"Maya Matuszczyk maccraft123mc at gmail dot com>",
 	"Lucas Melo <luluco250 at gmail dot com>"
 ]
 version = "0.6.0"

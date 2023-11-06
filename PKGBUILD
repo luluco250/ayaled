@@ -1,4 +1,5 @@
 # Maintainer: Lucas Melo <luluco250 at gmail dot com>
+# Contributor: Maya Matuszczyk maccraft123mc at gmail dot com>
 
 pkgname=ayaled-updated
 pkgver=0.6.0
